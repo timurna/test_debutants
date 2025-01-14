@@ -325,7 +325,7 @@ else:
         # Define the columns to display, replacing 'Player Name' with 'Player Link'
         display_columns = [
             "Competition",
-            "Player Link",  # Use the new link column
+            "Player",  # Use the new link column
             "Position",
             "Nationality",
             "Debut Club",
