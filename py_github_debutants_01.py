@@ -351,6 +351,14 @@ else:
         # Apply conditional styling
         styled_table = final_df.style.apply(highlight_mv, axis=None)
 
+        # Set font size to 12px for headers and data cells
+        styled_table = styled_table.set_table_styles(
+            [
+                {'selector': 'th, td',
+                 'props': [('font-size', '12px')]}
+            ]
+        )
+
         # Format money columns
         money_cols = []
         if "Value at Debut" in final_df.columns:
@@ -383,11 +391,17 @@ else:
                 return f"{x:+.1f}%"
             styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
 
+        # Additional table styling for responsiveness
+        styled_table = styled_table.set_properties(**{
+            'width': '100%',
+            'overflow-x': 'auto'
+        })
+
         # Render the styled table as HTML
         try:
             html_table = styled_table.to_html(escape=False)
         except AttributeError:
-            st.error("The 'render()' method is not available in your Pandas version. Please update Pandas to use 'to_html()'.")
+            st.error("The 'to_html()' method is not available in your Pandas version. Please update Pandas to use this feature.")
             st.stop()
 
         st.markdown(html_table, unsafe_allow_html=True)
