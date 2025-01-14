@@ -351,11 +351,16 @@ else:
         # Apply conditional styling
         styled_table = final_df.style.apply(highlight_mv, axis=None)
 
-        # Set font size to 12px for headers and data cells
+        # Set font size to 12px and define table layout for even column distribution
         styled_table = styled_table.set_table_styles(
             [
+                # Set table width to 100% and layout to fixed for even column distribution
+                {'selector': 'table',
+                 'props': [('width', '100%'), ('table-layout', 'fixed')]},
+                
+                # Set font size and padding for headers and cells
                 {'selector': 'th, td',
-                 'props': [('font-size', '12px')]}
+                 'props': [('font-size', '12px'), ('padding', '5px')]}
             ]
         )
 
@@ -391,11 +396,14 @@ else:
                 return f"{x:+.1f}%"
             styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
 
-        # Additional table styling for responsiveness
-        styled_table = styled_table.set_properties(**{
-            'width': '100%',
-            'overflow-x': 'auto'
-        })
+        # Additional table styling for responsiveness and horizontal scrolling (optional)
+        styled_table = styled_table.set_table_styles(
+            [
+                {'selector': 'table',
+                 'props': [('width', '100%'), ('table-layout', 'fixed'), ('overflow-x', 'auto')]}
+            ],
+            overwrite=False  # Prevent overwriting previous styles
+        )
 
         # Render the styled table as HTML
         try:
