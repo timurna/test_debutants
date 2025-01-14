@@ -300,8 +300,26 @@ else:
             filtered_data['Debut Date'] = filtered_data['Debut Date'].dt.strftime('%d.%m.%Y')
 
         # Create 'Player Link' column with clickable links
+        def sanitize_url(url):
+            import re
+            # Simple URL validation
+            regex = re.compile(
+                r'^(?:http|ftp)s?://'  # http:// or https://
+                r'(?:\S+(?::\S*)?@)?'  # user:pass@
+                r'(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])'  # IP
+                r'(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}'
+                r'(?:\.(?:[0-9]{1,3}))|'
+                r'(?:(?:[a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))'  # Domain
+                r'(?::\d{2,5})?'  # Port
+                r'(?:/\S*)?$',
+                re.IGNORECASE
+            )
+            return re.match(regex, url) is not None
+
         filtered_data['Player Link'] = filtered_data.apply(
-            lambda row: f'<a href="{row["player_url"]}" target="_blank">{row["Player Name"]}</a>' if pd.notna(row['player_url']) and isinstance(row['player_url'], str) else row['Player Name'],
+            lambda row: f'<a href="{row["player_url"]}" target="_blank">{row["Player Name"]}</a>' 
+                        if pd.notna(row['player_url']) and isinstance(row['player_url'], str) and sanitize_url(row['player_url']) 
+                        else row['Player Name'],
             axis=1
         )
 
