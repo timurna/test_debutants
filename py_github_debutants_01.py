@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import gdown
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 # ====================================================================================
 # 1) PAGE CONFIG
@@ -84,10 +83,6 @@ def download_and_load_data(file_url, data_version):
             },
             inplace=True
         )
-
-        # Standardize 'Debut Month' format to three-letter abbreviations
-        if 'Debut Month' in data.columns:
-            data['Debut Month'] = data['Debut Month'].str.strip().str.title()
 
         data['Debut Date'] = pd.to_datetime(data['Debut Date'], errors='coerce')
         if 'Debut Date' in data.columns:
@@ -342,12 +337,8 @@ else:
             "Current Market Value",
             "% Change"
         ]
-
-        # Select the display columns
+        display_columns = [c for c in display_columns if c in filtered_data.columns]
         final_df = filtered_data[display_columns].reset_index(drop=True)
-
-        st.title("Debütanten")
-        st.write(f"{len(final_df)} Debütanten")
 
         # Apply conditional styling
         styled_table = final_df.style.apply(highlight_mv, axis=None)
@@ -384,25 +375,10 @@ else:
                 return f"{x:+.1f}%"
             styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
 
-        # Configure grid options for AgGrid
-        gb = GridOptionsBuilder.from_dataframe(final_df)
-        gb.configure_column("Player Link", header_name="Player Name", cellRenderer='function(params) {return params.value;}')
-        gb.configure_pagination(paginationAutoPageSize=True)  # Enable pagination
-        gb.configure_default_column(editable=False, sortable=True, filter=True)  # Make all columns sortable and filterable
-        grid_options = gb.build()
+        # Render the styled table as HTML
+        html_table = styled_table.render()
 
-        # Display the table using AgGrid
-        AgGrid(
-            final_df,
-            gridOptions=grid_options,
-            enable_enterprise_modules=False,
-            update_mode=GridUpdateMode.NO_UPDATE,
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            fit_columns_on_grid_load=True,
-            allow_unsafe_jscode=True,  # Allows rendering of HTML in cells
-            height=500,
-            width='100%',
-        )
+        st.markdown(html_table, unsafe_allow_html=True)
 
         # Download
         if not final_df.empty:
