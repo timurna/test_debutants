@@ -315,7 +315,7 @@ else:
             )
             return re.match(regex, url) is not None
 
-        filtered_data['Player Link'] = filtered_data.apply(
+        filtered_data['Player'] = filtered_data.apply(
             lambda row: f'<a href="{row["player_url"]}" target="_blank">{row["Player Name"]}</a>' 
                         if pd.notna(row['player_url']) and isinstance(row['player_url'], str) and sanitize_url(row['player_url']) 
                         else row['Player Name'],
