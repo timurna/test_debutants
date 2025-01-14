@@ -37,7 +37,7 @@ def login():
         username = st.session_state.login_username
         password = st.session_state.login_password
         if authenticate(username, password):
-            st.session_state.authenticated = True
+            st.session_state['authenticated'] = True
             st.success("Login successful!")
         else:
             st.error("Invalid username or password")
@@ -123,12 +123,30 @@ def clear_callback():
 # 6) HIGHLIGHT FUNCTION
 # ====================================================================================
 def highlight_mv(df):
+    """
+    Applies conditional styling:
+    - Green background for 'Current Market Value' > 'Value at Debut'
+    - Red background for 'Current Market Value' < 'Value at Debut'
+    - Green background for '% Change' > 0
+    - Red background for '% Change' < 0
+    - No background for '% Change' = 0 or NaN
+    """
     styles = pd.DataFrame('', index=df.index, columns=df.columns)
+    
+    # Style 'Current Market Value'
     if 'Value at Debut' in df.columns and 'Current Market Value' in df.columns:
         mask_up = df['Current Market Value'] > df['Value at Debut']
         mask_down = df['Current Market Value'] < df['Value at Debut']
-        styles.loc[mask_up, 'Current Market Value'] = 'background-color: #c6f6d5'
-        styles.loc[mask_down, 'Current Market Value'] = 'background-color: #feb2b2'
+        styles.loc[mask_up, 'Current Market Value'] = 'background-color: #c6f6d5'   # light green
+        styles.loc[mask_down, 'Current Market Value'] = 'background-color: #feb2b2' # light red
+    
+    # Style '% Change'
+    if '% Change' in df.columns:
+        mask_change_up = df['% Change'] > 0
+        mask_change_down = df['% Change'] < 0
+        styles.loc[mask_change_up, '% Change'] = 'background-color: #c6f6d5'        # light green
+        styles.loc[mask_change_down, '% Change'] = 'background-color: #feb2b2'      # light red
+    
     return styles
 
 # ====================================================================================
@@ -307,12 +325,12 @@ else:
 
         # Format integer columns
         integer_cols = ["Goals For", "Goals Against"]
-        
+
         def integer_format(x):
             if pd.isna(x):
                 return "0"
             return f"{int(x)}"
-        
+
         styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
 
         # Format % Change
