@@ -83,6 +83,10 @@ def download_and_load_data(file_url, data_version):
             inplace=True
         )
 
+        # Standardize 'Debut Month' format to three-letter abbreviations
+        if 'Debut Month' in data.columns:
+            data['Debut Month'] = data['Debut Month'].str.strip().str.title()
+
         data['Debut Date'] = pd.to_datetime(data['Debut Date'], errors='coerce')
         if 'Debut Date' in data.columns:
             data['Debut Year'] = data['Debut Date'].dt.year
@@ -182,9 +186,6 @@ else:
     if 'Age at Debut' in data.columns:
         data = data[data['Age at Debut'] >= 0]
 
-    # Debug: Display unique debut months
-    st.write("Unique Debut Months:", sorted(data['Debut Month'].dropna().unique()))
-
     # ----------------------------------------------------------------------------------
     # FILTER UI
     # ----------------------------------------------------------------------------------
@@ -196,7 +197,7 @@ else:
             if 'Competition (Country)' in data.columns and 'CompCountryID' in data.columns:
                 all_comps = sorted(data['Competition (Country)'].dropna().unique())
                 comp_options = ["All"] + all_comps
-                selected_comp = st.multiselect("Select Competition", comp_options, default=[])
+                selected_comp = st.multiselect("Select Competition", comp_options, default=["All"])
             else:
                 st.warning("No Competition/Country columns in data.")
                 selected_comp = []
@@ -216,7 +217,7 @@ else:
                 month_options = ["All"] + sorted_months
                 
                 # Multiselect widget for selecting debut months
-                selected_months = st.multiselect("Select Debut Month", month_options, default=[])
+                selected_months = st.multiselect("Select Debut Month", month_options, default=["All"])
             else:
                 st.warning("No 'Debut Month' column in data.")
                 selected_months = []
@@ -226,7 +227,7 @@ else:
             if 'Debut Year' in data.columns:
                 all_years = sorted(data['Debut Year'].dropna().unique())
                 year_options = ["All"] + [str(yr) for yr in all_years]
-                selected_years = st.multiselect("Select Debut Year", year_options, default=[])
+                selected_years = st.multiselect("Select Debut Year", year_options, default=["All"])
             else:
                 st.warning("No 'Debut Year' column in data.")
                 selected_years = []
@@ -264,108 +265,108 @@ else:
             st.button("Clear", on_click=clear_callback)
 
     # ----------------------------------------------------------------------------------
-# APPLY FILTERS & DISPLAY
-# ----------------------------------------------------------------------------------
-if st.session_state['run_clicked']:
-    filtered_data = data.copy()
+    # APPLY FILTERS & DISPLAY
+    # ----------------------------------------------------------------------------------
+    if st.session_state['run_clicked']:
+        filtered_data = data.copy()
 
-    # 1) Competition
-    if selected_comp and "All" not in selected_comp:
-        selected_ids = [c.replace(" (", "||").replace(")", "") for c in selected_comp]
-        filtered_data = filtered_data[filtered_data['CompCountryID'].isin(selected_ids)]
+        # 1) Competition
+        if selected_comp and "All" not in selected_comp:
+            selected_ids = [c.replace(" (", "||").replace(")", "") for c in selected_comp]
+            filtered_data = filtered_data[filtered_data['CompCountryID'].isin(selected_ids)]
 
-    # 2) Debut Month
-    if selected_months and "All" not in selected_months:
-        filtered_data = filtered_data[filtered_data['Debut Month'].isin(selected_months)]
+        # 2) Debut Month
+        if selected_months and "All" not in selected_months:
+            filtered_data = filtered_data[filtered_data['Debut Month'].isin(selected_months)]
 
-    # 3) Debut Year
-    if selected_years and "All" not in selected_years:
-        valid_years = [int(y) for y in selected_years if y.isdigit()]
-        filtered_data = filtered_data[filtered_data['Debut Year'].isin(valid_years)]
+        # 3) Debut Year
+        if selected_years and "All" not in selected_years:
+            valid_years = [int(y) for y in selected_years if y.isdigit()]
+            filtered_data = filtered_data[filtered_data['Debut Year'].isin(valid_years)]
 
-    # 4) Max Age
-    if 'Age at Debut' in filtered_data.columns:
-        filtered_data = filtered_data[filtered_data['Age at Debut'] <= max_age_filter]
+        # 4) Max Age
+        if 'Age at Debut' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['Age at Debut'] <= max_age_filter]
 
-    # 5) Min minutes
-    if 'Minutes Played' in filtered_data.columns:
-        filtered_data = filtered_data[filtered_data['Minutes Played'] >= min_minutes]
+        # 5) Min minutes
+        if 'Minutes Played' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['Minutes Played'] >= min_minutes]
 
-    # Sort by Debut Date desc, then format
-    if not filtered_data.empty and 'Debut Date' in filtered_data.columns:
-        filtered_data.sort_values('Debut Date', ascending=False, inplace=True)
-        filtered_data['Debut Date'] = filtered_data['Debut Date'].dt.strftime('%d.%m.%Y')
+        # Sort by Debut Date desc, then format
+        if not filtered_data.empty and 'Debut Date' in filtered_data.columns:
+            filtered_data.sort_values('Debut Date', ascending=False, inplace=True)
+            filtered_data['Debut Date'] = filtered_data['Debut Date'].dt.strftime('%d.%m.%Y')
 
-    display_columns = [
-        "Competition",
-        "Player Name",
-        "Position",
-        "Nationality",
-        "Debut Club",
-        "Opponent",
-        "Debut Date",
-        "Age at Debut",
-        "Goals For",
-        "Goals Against",
-        "Appearances",
-        "Goals",
-        "Minutes Played",
-        "Value at Debut",
-        "Current Market Value",
-        "% Change"
-    ]
-    display_columns = [c for c in display_columns if c in filtered_data.columns]
-    final_df = filtered_data[display_columns].reset_index(drop=True)
+        display_columns = [
+            "Competition",
+            "Player Name",
+            "Position",
+            "Nationality",
+            "Debut Club",
+            "Opponent",
+            "Debut Date",
+            "Age at Debut",
+            "Goals For",
+            "Goals Against",
+            "Appearances",
+            "Goals",
+            "Minutes Played",
+            "Value at Debut",
+            "Current Market Value",
+            "% Change"
+        ]
+        display_columns = [c for c in display_columns if c in filtered_data.columns]
+        final_df = filtered_data[display_columns].reset_index(drop=True)
 
-    st.title("Debütanten")
-    st.write(f"{len(final_df)} Debütanten")
+        st.title("Debütanten")
+        st.write(f"{len(final_df)} Debütanten")
 
-    styled_table = final_df.style.apply(highlight_mv, axis=None)
+        styled_table = final_df.style.apply(highlight_mv, axis=None)
 
-    # Format money columns
-    money_cols = []
-    if "Value at Debut" in final_df.columns:
-        money_cols.append("Value at Debut")
-    if "Current Market Value" in final_df.columns:
-        money_cols.append("Current Market Value")
+        # Format money columns
+        money_cols = []
+        if "Value at Debut" in final_df.columns:
+            money_cols.append("Value at Debut")
+        if "Current Market Value" in final_df.columns:
+            money_cols.append("Current Market Value")
 
-    def money_format(x):
-        if pd.isna(x):
-            return "€0"
-        return f"€{x:,.0f}"
-
-    styled_table = styled_table.format(subset=money_cols, formatter=money_format)
-
-    # Format integer columns
-    integer_cols = ["Goals For", "Goals Against"]
-
-    def integer_format(x):
-        if pd.isna(x):
-            return "0"
-        return f"{int(x)}"
-
-    styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
-
-    # Format % Change
-    if "% Change" in final_df.columns:
-        def pct_format(x):
+        def money_format(x):
             if pd.isna(x):
-                return ""
-            return f"{x:+.1f}%"
-        styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
+                return "€0"
+            return f"€{x:,.0f}"
 
-    st.dataframe(styled_table, use_container_width=True)
+        styled_table = styled_table.format(subset=money_cols, formatter=money_format)
 
-    # Download
-    if not final_df.empty:
-        tmp_path = '/tmp/filtered_data.xlsx'
-        final_df.to_excel(tmp_path, index=False)
-        with open(tmp_path, 'rb') as f:
-            st.download_button(
-                label="Download Filtered Data as Excel",
-                data=f,
-                file_name="filtered_debutants.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-else:
-    st.write("Please set your filters and click **Run** to see results.")
+        # Format integer columns
+        integer_cols = ["Goals For", "Goals Against"]
+
+        def integer_format(x):
+            if pd.isna(x):
+                return "0"
+            return f"{int(x)}"
+
+        styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
+
+        # Format % Change
+        if "% Change" in final_df.columns:
+            def pct_format(x):
+                if pd.isna(x):
+                    return ""
+                return f"{x:+.1f}%"
+            styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
+
+        st.dataframe(styled_table, use_container_width=True)
+
+        # Download
+        if not final_df.empty:
+            tmp_path = '/tmp/filtered_data.xlsx'
+            final_df.to_excel(tmp_path, index=False)
+            with open(tmp_path, 'rb') as f:
+                st.download_button(
+                    label="Download Filtered Data as Excel",
+                    data=f,
+                    file_name="filtered_debutants.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+    else:
+        st.write("Please set your filters and click **Run** to see results.")
