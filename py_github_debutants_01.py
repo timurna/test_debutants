@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import gdown
 from datetime import datetime
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 # ====================================================================================
 # 1) PAGE CONFIG
@@ -79,6 +80,7 @@ def download_and_load_data(file_url, data_version):
                 'minutes_played': 'Minutes Played',
                 'debut_type': 'Debut Type',
                 'opponent': 'Opponent',
+                'player_url': 'player_url'  # Ensure 'player_url' is included
             },
             inplace=True
         )
@@ -264,122 +266,136 @@ else:
         with clear_col:
             st.button("Clear", on_click=clear_callback)
 
-# ----------------------------------------------------------------------------------
-# APPLY FILTERS & DISPLAY
-# ----------------------------------------------------------------------------------
-if st.session_state['run_clicked']:
-    filtered_data = data.copy()
+    # ----------------------------------------------------------------------------------
+    # APPLY FILTERS & DISPLAY
+    # ----------------------------------------------------------------------------------
+    if st.session_state['run_clicked']:
+        filtered_data = data.copy()
 
-    # 1) Competition
-    if selected_comp and "All" not in selected_comp:
-        selected_ids = [c.replace(" (", "||").replace(")", "") for c in selected_comp]
-        filtered_data = filtered_data[filtered_data['CompCountryID'].isin(selected_ids)]
+        # 1) Competition
+        if selected_comp and "All" not in selected_comp:
+            selected_ids = [c.replace(" (", "||").replace(")", "") for c in selected_comp]
+            filtered_data = filtered_data[filtered_data['CompCountryID'].isin(selected_ids)]
 
-    # 2) Debut Month
-    if selected_months and "All" not in selected_months:
-        filtered_data = filtered_data[filtered_data['Debut Month'].isin(selected_months)]
+        # 2) Debut Month
+        if selected_months and "All" not in selected_months:
+            filtered_data = filtered_data[filtered_data['Debut Month'].isin(selected_months)]
 
-    # 3) Debut Year
-    if selected_years and "All" not in selected_years:
-        valid_years = [int(y) for y in selected_years if y.isdigit()]
-        filtered_data = filtered_data[filtered_data['Debut Year'].isin(valid_years)]
+        # 3) Debut Year
+        if selected_years and "All" not in selected_years:
+            valid_years = [int(y) for y in selected_years if y.isdigit()]
+            filtered_data = filtered_data[filtered_data['Debut Year'].isin(valid_years)]
 
-    # 4) Max Age
-    if 'Age at Debut' in filtered_data.columns:
-        filtered_data = filtered_data[filtered_data['Age at Debut'] <= max_age_filter]
+        # 4) Max Age
+        if 'Age at Debut' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['Age at Debut'] <= max_age_filter]
 
-    # 5) Min minutes
-    if 'Minutes Played' in filtered_data.columns:
-        filtered_data = filtered_data[filtered_data['Minutes Played'] >= min_minutes]
+        # 5) Min minutes
+        if 'Minutes Played' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['Minutes Played'] >= min_minutes]
 
-    # Sort by Debut Date desc, then format
-    if not filtered_data.empty and 'Debut Date' in filtered_data.columns:
-        filtered_data.sort_values('Debut Date', ascending=False, inplace=True)
-        filtered_data['Debut Date'] = filtered_data['Debut Date'].dt.strftime('%d.%m.%Y')
+        # Sort by Debut Date desc, then format
+        if not filtered_data.empty and 'Debut Date' in filtered_data.columns:
+            filtered_data.sort_values('Debut Date', ascending=False, inplace=True)
+            filtered_data['Debut Date'] = filtered_data['Debut Date'].dt.strftime('%d.%m.%Y')
 
-    # Define the columns to display, replacing 'Player Name' with 'Player Link'
-    display_columns = [
-        "Competition",
-        "Player Link",  # Use the new link column
-        "Position",
-        "Nationality",
-        "Debut Club",
-        "Opponent",
-        "Debut Date",
-        "Age at Debut",
-        "Goals For",
-        "Goals Against",
-        "Appearances",
-        "Goals",
-        "Minutes Played",
-        "Value at Debut",
-        "Current Market Value",
-        "% Change"
-    ]
+        # Create 'Player Link' column with clickable links
+        filtered_data['Player Link'] = filtered_data.apply(
+            lambda row: f'<a href="{row["player_url"]}" target="_blank">{row["Player Name"]}</a>' if pd.notna(row['player_url']) and isinstance(row['player_url'], str) else row['Player Name'],
+            axis=1
+        )
 
-    # Create 'Player Link' column
-    filtered_data['Player Link'] = filtered_data.apply(
-        lambda row: f"[{row['Player Name']}]({row['player_url']})" if pd.notna(row['player_url']) else row['Player Name'],
-        axis=1
-    )
+        # Define the columns to display, replacing 'Player Name' with 'Player Link'
+        display_columns = [
+            "Competition",
+            "Player Link",  # Use the new link column
+            "Position",
+            "Nationality",
+            "Debut Club",
+            "Opponent",
+            "Debut Date",
+            "Age at Debut",
+            "Goals For",
+            "Goals Against",
+            "Appearances",
+            "Goals",
+            "Minutes Played",
+            "Value at Debut",
+            "Current Market Value",
+            "% Change"
+        ]
 
-    # Select the display columns
-    final_df = filtered_data[display_columns].reset_index(drop=True)
+        # Select the display columns
+        final_df = filtered_data[display_columns].reset_index(drop=True)
 
-    st.title("Debütanten")
-    st.write(f"{len(final_df)} Debütanten")
+        st.title("Debütanten")
+        st.write(f"{len(final_df)} Debütanten")
 
-    # Apply styling (you can keep your existing styling functions if needed)
-    styled_table = final_df.style.apply(highlight_mv, axis=None)
+        # Apply conditional styling
+        styled_table = final_df.style.apply(highlight_mv, axis=None)
 
-    # Format money columns
-    money_cols = []
-    if "Value at Debut" in final_df.columns:
-        money_cols.append("Value at Debut")
-    if "Current Market Value" in final_df.columns:
-        money_cols.append("Current Market Value")
+        # Format money columns
+        money_cols = []
+        if "Value at Debut" in final_df.columns:
+            money_cols.append("Value at Debut")
+        if "Current Market Value" in final_df.columns:
+            money_cols.append("Current Market Value")
 
-    def money_format(x):
-        if pd.isna(x):
-            return "€0"
-        return f"€{x:,.0f}"
-
-    styled_table = styled_table.format(subset=money_cols, formatter=money_format)
-
-    # Format integer columns
-    integer_cols = ["Goals For", "Goals Against"]
-
-    def integer_format(x):
-        if pd.isna(x):
-            return "0"
-        return f"{int(x)}"
-
-    styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
-
-    # Format % Change
-    if "% Change" in final_df.columns:
-        def pct_format(x):
+        def money_format(x):
             if pd.isna(x):
-                return ""
-            return f"{x:+.1f}%"
-        styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
+                return "€0"
+            return f"€{x:,.0f}"
 
-    # Convert the styled DataFrame to Markdown
-    markdown_table = final_df.to_markdown(escape=False)
+        styled_table = styled_table.format(subset=money_cols, formatter=money_format)
 
-    # Display the Markdown table
-    st.markdown(markdown_table, unsafe_allow_html=True)
+        # Format integer columns
+        integer_cols = ["Goals For", "Goals Against"]
 
-    # Download
-    if not final_df.empty:
-        tmp_path = '/tmp/filtered_data.xlsx'
-        final_df.to_excel(tmp_path, index=False)
-        with open(tmp_path, 'rb') as f:
-            st.download_button(
-                label="Download Filtered Data as Excel",
-                data=f,
-                file_name="filtered_debutants.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-else:
-    st.write("Please set your filters and click **Run** to see results.")
+        def integer_format(x):
+            if pd.isna(x):
+                return "0"
+            return f"{int(x)}"
+
+        styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
+
+        # Format % Change
+        if "% Change" in final_df.columns:
+            def pct_format(x):
+                if pd.isna(x):
+                    return ""
+                return f"{x:+.1f}%"
+            styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
+
+        # Configure grid options for AgGrid
+        gb = GridOptionsBuilder.from_dataframe(final_df)
+        gb.configure_column("Player Link", header_name="Player Name", cellRenderer='function(params) {return params.value;}')
+        gb.configure_pagination(paginationAutoPageSize=True)  # Enable pagination
+        gb.configure_default_column(editable=False, sortable=True, filter=True)  # Make all columns sortable and filterable
+        grid_options = gb.build()
+
+        # Display the table using AgGrid
+        AgGrid(
+            final_df,
+            gridOptions=grid_options,
+            enable_enterprise_modules=False,
+            update_mode=GridUpdateMode.NO_UPDATE,
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            fit_columns_on_grid_load=True,
+            allow_unsafe_jscode=True,  # Allows rendering of HTML in cells
+            height=500,
+            width='100%',
+        )
+
+        # Download
+        if not final_df.empty:
+            tmp_path = '/tmp/filtered_data.xlsx'
+            final_df.to_excel(tmp_path, index=False)
+            with open(tmp_path, 'rb') as f:
+                st.download_button(
+                    label="Download Filtered Data as Excel",
+                    data=f,
+                    file_name="filtered_debutants.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+    else:
+        st.write("Please set your filters and click **Run** to see results.")
