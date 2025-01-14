@@ -360,7 +360,7 @@ else:
                 
                 # Set font size and padding for headers and cells
                 {'selector': 'th, td',
-                 'props': [('font-size', '12px'), ('padding', '5px')]}
+                 'props': [('font-size', '14px'), ('padding', '5px')]}
             ]
         )
 
