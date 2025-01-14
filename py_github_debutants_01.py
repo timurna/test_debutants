@@ -182,6 +182,9 @@ else:
     if 'Age at Debut' in data.columns:
         data = data[data['Age at Debut'] >= 0]
 
+    # Debug: Display unique debut months
+    st.write("Unique Debut Months:", sorted(data['Debut Month'].dropna().unique()))
+
     # ----------------------------------------------------------------------------------
     # FILTER UI
     # ----------------------------------------------------------------------------------
@@ -201,9 +204,9 @@ else:
         # 2) Debut Month
         with col2:
             if 'Debut Month' in data.columns:
-                # Define the chronological order of months
-                months_order = ['January', 'February', 'March', 'April', 'May', 'June',
-                               'July', 'August', 'September', 'October', 'November', 'December']
+                # Define the chronological order of months using abbreviations
+                months_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
                 
                 # Extract unique months from the data and sort them chronologically
                 available_months = data['Debut Month'].dropna().unique()
