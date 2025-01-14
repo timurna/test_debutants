@@ -201,8 +201,18 @@ else:
         # 2) Debut Month
         with col2:
             if 'Debut Month' in data.columns:
-                all_months = sorted(data['Debut Month'].dropna().unique())
-                month_options = ["All"] + list(all_months)
+                # Define the chronological order of months
+                months_order = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December']
+                
+                # Extract unique months from the data and sort them chronologically
+                available_months = data['Debut Month'].dropna().unique()
+                sorted_months = [month for month in months_order if month in available_months]
+                
+                # Create the filter options with "All" as the first option
+                month_options = ["All"] + sorted_months
+                
+                # Multiselect widget for selecting debut months
                 selected_months = st.multiselect("Select Debut Month", month_options, default=[])
             else:
                 st.warning("No 'Debut Month' column in data.")
