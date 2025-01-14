@@ -84,6 +84,10 @@ def download_and_load_data(file_url, data_version):
             inplace=True
         )
 
+        # Standardize 'Debut Month' format to three-letter abbreviations
+        if 'Debut Month' in data.columns:
+            data['Debut Month'] = data['Debut Month'].str.strip().str.title()
+
         data['Debut Date'] = pd.to_datetime(data['Debut Date'], errors='coerce')
         if 'Debut Date' in data.columns:
             data['Debut Year'] = data['Debut Date'].dt.year
@@ -337,8 +341,12 @@ else:
             "Current Market Value",
             "% Change"
         ]
+        # Ensure that all display columns exist in the filtered data
         display_columns = [c for c in display_columns if c in filtered_data.columns]
         final_df = filtered_data[display_columns].reset_index(drop=True)
+
+        st.title("Debütanten")
+        st.write(f"{len(final_df)} Debütanten")
 
         # Apply conditional styling
         styled_table = final_df.style.apply(highlight_mv, axis=None)
@@ -376,7 +384,11 @@ else:
             styled_table = styled_table.format(subset=["% Change"], formatter=pct_format)
 
         # Render the styled table as HTML
-        html_table = styled_table.render()
+        try:
+            html_table = styled_table.to_html(escape=False)
+        except AttributeError:
+            st.error("The 'render()' method is not available in your Pandas version. Please update Pandas to use 'to_html()'.")
+            st.stop()
 
         st.markdown(html_table, unsafe_allow_html=True)
 
