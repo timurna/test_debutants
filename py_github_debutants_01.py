@@ -291,6 +291,7 @@ else:
 
         styled_table = final_df.style.apply(highlight_mv, axis=None)
 
+        # Format money columns
         money_cols = []
         if "Value at Debut" in final_df.columns:
             money_cols.append("Value at Debut")
@@ -304,6 +305,17 @@ else:
 
         styled_table = styled_table.format(subset=money_cols, formatter=money_format)
 
+        # Format integer columns
+        integer_cols = ["Goals For", "Goals Against"]
+        
+        def integer_format(x):
+            if pd.isna(x):
+                return "0"
+            return f"{int(x)}"
+        
+        styled_table = styled_table.format(subset=integer_cols, formatter=integer_format)
+
+        # Format % Change
         if "% Change" in final_df.columns:
             def pct_format(x):
                 if pd.isna(x):
